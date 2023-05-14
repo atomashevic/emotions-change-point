@@ -69,7 +69,8 @@ We take three different approaches to change point detection in order to assure 
 
 
 #### Neutral expressions
-```{ bcp-nt fig.width = 6}
+
+```{r bcp-nt, fig.width = 6}
 bcp_nt <- bcp(ts_nt)
 plot(bcp_nt)
 ```
@@ -92,7 +93,7 @@ In case of neutral expressions, `bcp` detects no change points with posterior pr
 
 #### Negative emotions
 
-```{r bcp-neg fig.width = 6}
+```{r bcp-neg, fig.width = 6}
 bcp_ng <- bcp(ts_ng)
 plot(bcp_ng)
 ```
@@ -115,7 +116,7 @@ In case of negative emotions, we have detected change points in frames: `r bcp_r
 
 Finally, with `bcp` we can perform multivariate change-point detection on all emotions.
 
-```{r bcp-all fig.width = 6}
+```{r bcp-all, fig.width = 6}
 bcp_mv <- bcp(ts_mv)
 plot(bcp_mv)
 ```
@@ -230,7 +231,7 @@ cols <- c(cpal[7],cpal[5],cpal[1],cpal[8],cpal[6],cpal[4]) #<3>
 
 Now we can plot the time series of all emotions.
 
-```{r fig1 fig.width = 16, fig.height = 8}
+```{r fig1, fig.width = 16, fig.height = 8}
 plot(NULL, ylim=c(0,0.3),xlim=c(0,max(x_m)),
 xlab='Time (minutes)',
 ylab='Score') #<1>
@@ -257,7 +258,7 @@ nt = rollmean(ts_nt, 12, align = 'right')
 ```
 We will plot the time series of positive and negative emotions with the change points annotated.
 
-```{r fig2 fig.width = 16, fig.height = 8}
+```{r fig2, fig.width = 16, fig.height = 8}
 plot(NULL, ylim=c(0,0.85),xlim=c(0,max(x_m)),
 xlab='Time (minutes)',
 ylab='Score') #<1>
