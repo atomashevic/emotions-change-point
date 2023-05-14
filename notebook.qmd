@@ -1,6 +1,14 @@
 ---
-title: "Emerge chapter Notebook"
-author: "AT"
+title: "Emotional dynamics in online videos: Integrating machine learning and content analysis"
+author:
+  - name: Sara Major
+    orcid: 0009-0008-7901-5489
+    affiliations:
+      - name: University of Novi Sad, Department of Sociology
+  - name: Aleksandar Tomašević
+    orcid: 0000-0003-4863-6051
+    affiliations:
+      - name: University of Novi Sad, Department of Sociology
 format:
   html:
     embed-resources: true
@@ -9,6 +17,7 @@ format:
       hypothesis: 
         theme: clean
   docx: default
+  pdf: default
 bibliography: references.bib
 execute:
   freeze: auto
