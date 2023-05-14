@@ -1,0 +1,317 @@
+---
+title: "Emerge chapter Notebook"
+author: "AT"
+format:
+  html:
+    embed-resources: true
+    code-fold: show
+    comments:
+      hypothesis: 
+        theme: clean
+  docx: default
+bibliography: references.bib
+execute:
+  freeze: auto
+---
+
+```{r setup, include=FALSE}
+library(bcp)
+library(hdcd)
+library(solocp)
+library(zoo)
+library(kableExtra)
+
+frame_to_min <- function(f){
+    seconds = f * 5.05
+    minutes = seconds / 60
+    return(minutes)
+}
+
+cpal <- palette.colors(palette = "Okabe-Ito")
+cpal2 <- palette.colors(palette = "Set 1")
+```
+
+## Prepare data
+
+We analyze this video of Aleksandar Vučić. It's a media conference after decision of Kosovo government to not permit Serbian licence plates.
+
+{{< video https://www.youtube.com/watch?v=knhZJcISbWQ >}}
+
+The video was processed in our previous paper [@major2023Face].
+We can import the resulting CSV file from GitHub
+
+```{r read-csv}
+gh_url <- "https://raw.githubusercontent.com/atomashevic/face-of-populism/main/data-clean/1-t300.csv"
+vid <- read.csv(gh_url)
+head(vid[1:9])
+```
+
+Each row of `vid` is a frame of the video and we have total of `r nrow(vid)` frames.
+
+From the `vid` we extract the time series of:
+
+```{r time-series}
+ts_mv = cbind(vid$angry0,vid$disgust0,vid$fear0,vid$happy0,vid$sad0,vid$surprise0, vid$neutral0) #<1>
+
+ts_ng = vid$angry0 + vid$disgust0 + vid$sad0 + vid$fear0 #<2>
+ts_nt = vid$neutral0 #<3>
+```
+
+1. all emotions, 
+2. negative emotions 
+3. and neutral expression
+
+## Change-point detection
+
+We take three different approaches to change point detection in order to assure the robustness of our results.
+
+### Bayesian change-point detection `bcp`
+
+
+#### Neutral expressions
+```{ bcp-nt fig.width = 6}
+bcp_nt <- bcp(ts_nt)
+plot(bcp_nt)
+```
+
+
+```{r bcp-nt-res}
+bcp_res = which(bcp_nt$posterior.prob>0.8) #<1
+
+if (length(bcp_res) == 0) {
+  print("No change points detected")
+} else {
+    print(paste("Number of change points detected:", length(bcp_res)))
+    paste("Frames:",bcp_res)
+}
+```
+
+1. We set the of posterior probability of change point occurring in a specific frame is greater than 0.8.
+
+In case of neutral expressions, `bcp` detects no change points with posterior probability greater than 0.8.
+
+#### Negative emotions
+
+```{r bcp-neg fig.width = 6}
+bcp_ng <- bcp(ts_ng)
+plot(bcp_ng)
+```
+
+```{r bcp-neg-res}
+bcp_res = which(bcp_ng$posterior.prob>0.8) #<1>
+if (length(bcp_res) == 0) {
+  print("No change points detected")
+} else {
+    print(paste("Number of change points detected:", length(bcp_res)))
+    paste("Frames:",bcp_res)
+}
+```
+
+1. We set the of posterior probability of change point occurring in a specific frame is greater than 0.8.
+
+In case of negative emotions, we have detected change points in frames: `r bcp_res`.
+
+#### All emotions
+
+Finally, with `bcp` we can perform multivariate change-point detection on all emotions.
+
+```{r bcp-all fig.width = 6}
+bcp_mv <- bcp(ts_mv)
+plot(bcp_mv)
+```
+
+```{r bcp-all-res}
+bcp_res = which(bcp_mv$posterior.prob>0.8) #<1>
+if (length(bcp_res) == 0) {
+  print("No change points detected")
+} else {
+    print(paste("Number of change points detected:", length(bcp_res)))
+    paste("Frames:",bcp_res)
+}
+```
+
+1. We set the of posterior probability of change point occurring in a specific frame is greater than 0.8.
+
+In case of all emotions, we have detected change points in frames: `r bcp_res`.
+
+### High dimensional change point detection `hdcd`
+
+We use `hdcd` to detect change points in the time series of all emotions.
+
+```{r hdcd}
+tree <- hdcd::hdcd(ts_mv, method = "glasso", optimizer = "section_search")
+print('Change points')
+hdcd::get_change_points_from_tree(tree)
+```
+
+We have two change points detected: 157 and 213.
+
+### SoloCP `solocp`
+
+We use SoloCP approach for neutral and negative emotions.
+
+#### Neutral expressions
+
+```{r scp-neu}
+sigma <- sd(ts_nt) #<1>
+
+scp_nt <- solocp_single(ts_nt, sigma)
+
+print('Change points:')
+which(scp_nt$ratio>0.2) #<2>
+```
+
+1. We estimate the standard deviation of the time series.
+2. TODO Explain what ratio is!
+
+We have detected change points in frames: `r which(scp_nt$ratio>0.2)`.
+
+#### Negative emotions
+
+```{r scp-neg}
+sigma <- sd(ts_ng) #<1>
+
+scp_ng <- solocp_single(ts_ng, sigma)
+
+print('Change points:')
+which(scp_ng$ratio>0.2) #<2>
+```
+
+1. We estimate the standard deviation of the time series.
+2. TODO Explain what ratio is!
+
+We have detected change points in frames: `r which(scp_ng$ratio>0.2)`.
+
+### Summary
+
+When we combine the results of all three change point detection methods we get the following change points.
+
+```{r cps}
+cps <- c(76, 94, 157, 180, 213, 227, 264)
+```
+
+We can convert them to minutes of the video.
+
+```{r cps_m}
+cps_m <- sapply(cps, frame_to_min)
+```
+
+
+## Graphs
+
+### Time series of all 6 emotions
+
+Before we plot time series we need to prepare x-axis to be in minutes.
+
+```{r x-axis}
+x <- seq(0, nrow(vid), 1) #<1>
+x_m <- sapply(x, frame_to_min)
+```
+
+1. We create a sequence of numbers from 0 to the number of frames in the video.
+
+Now we need to prepare a data frame of rolling means for each emotion.
+
+```{r emo-ts}
+emos <- as.data.frame(matrix(0, nrow = nrow(ts_mv)-11, ncol = 6)) #<1>
+
+for (i in 1:6){
+  emos[,i] <- rollmean(ts_mv[,i], 12, align = "right") #<2>
+}
+
+colnames(emos) <- c('angry', 'disgust', 'fear', 'happy', 'sad', 'surprise')
+
+cols <- c(cpal[7],cpal[5],cpal[1],cpal[8],cpal[6],cpal[4]) #<3>
+```
+
+1. Since we will take rolling mean of 12 frames (roughly corresponding to one-minute period), the resulting data frame will have 11 rows less than the original time series data frame.
+2. We taking rolling mean of 12 values, aligned with the right, which means that we take into account emotional states expressed in the last minute (12 frames, spacing between the frames is roughly 5 seconds) when evaluating the current frame (right alignment).
+3. We assign colors to each emotion.
+
+Now we can plot the time series of all emotions.
+
+```{r fig1 fig.width = 16, fig.height = 8}
+plot(NULL, ylim=c(0,0.3),xlim=c(0,max(x_m)),
+xlab='Time (minutes)',
+ylab='Score') #<1>
+
+for (i in 1:6){
+    lines(x_m[13:269],(as.vector(t(emos[,i]))),col = cols[i], lwd=2, lty=1) #<2>
+}
+
+legend("topleft", legend = colnames(emos), col = cols[1:6], lty = 1, bty = "n") #<3>
+```
+
+1. We plot an empty plot with the x-axis ranging from 0 to the maximum number of minutes in the video and y-axis ranging from 0 to 0.3.
+2. We plot the time series of each emotion.
+3. We add a legend to the plot.
+
+### Annotated time series of negative emotions and neutral expression
+
+First, we need to create rolling averages of negative emotions and neutral expression.
+
+```{r ng-nt-ts}
+ng = rollmean(ts_ng, 12, align = 'right')
+nt = rollmean(ts_nt, 12, align = 'right')
+
+```
+We will plot the time series of positive and negative emotions with the change points annotated.
+
+```{r fig2 fig.width = 16, fig.height = 8}
+plot(NULL, ylim=c(0,0.85),xlim=c(0,max(x_m)),
+xlab='Time (minutes)',
+ylab='Score') #<1>
+
+lines(x_m[13:269],(as.vector(t(ng))),col = cpal2[1], lwd=2, lty=1) #<2>
+lines(x_m[13:269],(as.vector(t(nt))),col = cpal2[2], lwd=2, lty=1) #<3>
+for (i in 1:length(cps_m)){ 
+    abline(v=cps_m[i], col="grey", lwd=3, lty=2) #<4>
+    points(cps_m[i]-0.5, 0.85, pch=21, bg="white", cex=4.14) 
+    text(cps_m[i]-0.5, 0.85, paste(LETTERS[i]), cex=1.5, col="black") #<5>
+}
+```
+
+1. We plot an empty plot with the x-axis ranging from 0 to the maximum number of minutes in the video and y-axis ranging from 0 to 0.85.
+2. We plot the time series of negative emotions.
+3. We plot the time series of neutral expression.
+4. We add grey vertical lines at the change points.
+5. We add annotations to designate change points A through G.
+
+## Table
+
+Finally, we create a table with the change points and descriptions.
+
+It has to contain:
+1. Change point symbol (A-G)
+2. Change point frame number
+3. Change point time in minutes
+4. Description of the change point (what happens in terms of negative/neutral dynamics)
+
+```{r table-prep}
+lts <- c('A', 'B', 'C', 'D', 'E', 'F', 'G')
+ms <- c()
+for (i in 1:length(cps_m)){
+    ms[i] <- paste(floor(cps_m[i]),"m" ,floor((cps_m[i] - floor(cps_m[i]))*60) - 3, "s", sep = "") #<1>
+}
+```
+
+Now, let's give a short description for each change point.
+
+```{r table-desc}
+desc <- c(
+  'Rise of negative emotions to its maximum',
+  'Decline of negative emotions',
+  'Rise of neutral expression',
+  'Continual rise of neutral expression to its maximum',
+  'Burst of negative emotions',
+  'Continual rise of negative emotions',
+  'Rise of neutral expression, decline of negative emotions'
+)
+```
+
+
+```{r table}
+table <- data.frame(lts, cps, ms, desc)
+kable(table, caption = "Change points")
+```
+
