@@ -31,12 +31,13 @@ cpal2 <- palette.colors(palette = "Set 1")
 
 ## Prepare data
 
-We analyze this video of Aleksandar Vučić. It's a media conference after decision of Kosovo government to not permet Serbian licence plates.
+We analyze this video of Aleksandar Vučić. It's a media conference after decision of Kosovo government to not permit Serbian licence plates.
 
 {{< video https://www.youtube.com/watch?v=knhZJcISbWQ >}}
 
 The video was processed in our previous paper [@major2023Face].
-We can import the resulting CSV file from GitHub
+
+We can import the resulting CSV file from GitHub.
 
 ```{r}
 gh_url <- "https://raw.githubusercontent.com/atomashevic/face-of-populism/main/data-clean/1-t300.csv"
@@ -146,7 +147,7 @@ We have two change points detected: 157 and 213.
 
 ### SoloCP `solocp`
 
-We use SoloCP approach for netural and negative emotions.
+We use SoloCP approach for neutral and negative emotions.
 
 #### Neutral expressions
 
@@ -160,7 +161,7 @@ which(scp_nt$ratio>0.2) #<2>
 ```
 
 1. We estimate the standard deviation of the time series.
-2. TODO Explain what ratio is!
+2. Marginal inclusion probability ratio
 
 We have detected change points in frames: `r which(scp_nt$ratio>0.2)`.
 
@@ -176,7 +177,7 @@ which(scp_ng$ratio>0.2) #<2>
 ```
 
 1. We estimate the standard deviation of the time series.
-2. TODO Explain what ratio is!
+2. Marginal inclusion probability ratio
 
 We have detected change points in frames: `r which(scp_ng$ratio>0.2)`.
 
@@ -311,7 +312,7 @@ desc <- c(
 
 ```{r}
 table <- data.frame(lts, cps, ms, desc)
-write.csv(table, file = "../results/change_points_300.csv")
+# write.csv(table, file = "../results/change_points_300.csv")
 ```
 
 
