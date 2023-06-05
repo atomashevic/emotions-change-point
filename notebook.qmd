@@ -323,10 +323,6 @@ desc <- c(
 
 ```{r table}
 table <- data.frame(lts, cps, ms, desc)
-<<<<<<< HEAD
 # write.csv(table, file = "../results/change_points_300.csv")
-=======
-kable(table, caption = "Change points")
->>>>>>> parent of c346093 (fix changepoint inconstincencies)
 ```
 
